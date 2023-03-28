@@ -6,37 +6,53 @@
 #include "esp_chip_info.h"
 #include "esp_flash.h"
 #include "driver/gpio.h"
+#include "driver/ledc.h"
+
+// Useful docs
+// - PWM: https://docs.espressif.com/projects/esp8266-rtos-sdk/en/latest/api-reference/peripherals/pwm.html
+// - https://embeddedexplorer.com/esp32-pwm-using-ledc-peripheral/
 
 #define STACK_SIZE 1024
 
 const int LED_PIN = 2;
 
-StackType_t xStackLivenessBlink[STACK_SIZE];
-StaticTask_t xTaskBufferLivenessBlink;
+ledc_timer_config_t ledc_timer = {
+    .speed_mode = LEDC_LOW_SPEED_MODE,
+    .timer_num = LEDC_TIMER_0,
+    .duty_resolution = LEDC_TIMER_13_BIT,
+    .freq_hz = 1000,
+    .clk_cfg = LEDC_AUTO_CLK};
 
-void vTaskCodeLivenessBlink(void *_)
-{
-    gpio_set_direction(LED_PIN, GPIO_MODE_OUTPUT);
-
-    while (1)
-    {
-        gpio_set_level(LED_PIN, 1);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-        gpio_set_level(LED_PIN, 0);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
-}
+ledc_channel_config_t ledc_channel[1];
 
 void app_main(void)
 {
     printf("Hello world!\n");
 
-    xTaskCreateStatic(
-        vTaskCodeLivenessBlink,
-        "LivenessBlink",
-        STACK_SIZE, NULL, 1,
-        xStackLivenessBlink,
-        &xTaskBufferLivenessBlink);
+    ESP_ERROR_CHECK(ledc_timer_config(&ledc_timer));
+    ledc_channel[0].channel = LEDC_CHANNEL_0;
+    ledc_channel[0].gpio_num = LED_PIN;
+    ledc_channel[0].speed_mode = LEDC_LOW_SPEED_MODE;
+    ledc_channel[0].timer_sel = LEDC_TIMER_0;
+    ledc_channel[0].intr_type = LEDC_INTR_DISABLE;
+    ledc_channel[0].duty = 0;
+    ledc_channel[0].hpoint = 0;
+    ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel[0]));
+
+    for (;;)
+    {
+        uint32_t red_duty = 8191;
+
+        ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, red_duty));
+        ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0));
+        vTaskDelay(pdMS_TO_TICKS(1000));
+
+        red_duty = 8191 / 2;
+
+        ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, red_duty));
+        ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0));
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
 
     /* Print chip information */
     esp_chip_info_t chip_info;

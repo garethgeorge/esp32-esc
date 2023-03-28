@@ -5,6 +5,9 @@
         "task.h": "c",
         "esp_flash.h": "c",
         "gpio.h": "c",
-        "*.inc": "c"
+        "*.inc": "c",
+        "ledc.h": "c",
+        "soc.h": "c",
+        "periph_ctrl.h": "c"
     }
 }
