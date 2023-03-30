@@ -7,6 +7,7 @@
 #include "esp_flash.h"
 #include "driver/gpio.h"
 #include "driver/ledc.h"
+#include "esp_wifi.h"
 
 #include "esc.h"
 
@@ -14,50 +15,46 @@
 // - PWM: https://docs.espressif.com/projects/esp8266-rtos-sdk/en/latest/api-reference/peripherals/pwm.html
 // - https://embeddedexplorer.com/esp32-pwm-using-ledc-peripheral/
 
+#define WIFI_SSID "Zoomiebot"
+#define WIFI_PASS "z00mbot"
 #define STACK_SIZE 1024
 
 const int LED_PIN = 2;
 
-ledc_timer_config_t ledc_timer = {
-    .speed_mode = LEDC_LOW_SPEED_MODE,
-    .timer_num = LEDC_TIMER_0,
-    .duty_resolution = LEDC_TIMER_13_BIT,
-    .freq_hz = 50,
-    .clk_cfg = LEDC_AUTO_CLK};
-
-ledc_channel_config_t ledc_channel[1];
-
-int ms_to_duty(int freq, int ms)
+void calibrartion_sequence(ESC *esc)
 {
-    int duty_cycle_ms = (1000 / freq);
-    return (ms * 8191) / duty_cycle_ms;
+    printf("Throttling to max to trigger calibration.\n");
+    esc_set_pulse_duration(&esc, 2000);
+    vTaskDelay(6000 / portTICK_PERIOD_MS);
+    printf("Throttling to min to calibrate low end\n");
+    esc_set_pulse_duration(&esc, 1000);
 }
 
 void app_main(void)
 {
-    printf("Hello world!\n");
+    wifi_init_config_t wifi_config = WIFI_INIT_CONFIG_DEFAULT();
 
-    ESP_ERROR_CHECK(ledc_timer_config(&ledc_timer));
-    ledc_channel[0].channel = LEDC_CHANNEL_0;
-    ledc_channel[0].gpio_num = GPIO_NUM_27;
-    ledc_channel[0].speed_mode = LEDC_LOW_SPEED_MODE;
-    ledc_channel[0].timer_sel = LEDC_TIMER_0;
-    ledc_channel[0].intr_type = LEDC_INTR_DISABLE;
-    ledc_channel[0].duty = 0;
-    ledc_channel[0].hpoint = 0;
-    ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel[0]));
+    ESC esc;
+    esc_setup(&esc, LEDC_TIMER_0, LEDC_CHANNEL_0, GPIO_NUM_27, 50);
 
-    for (int i = 0;; i += 1000)
+    printf("ESC OUTPUT ON PIN 27\n");
+
+    printf("Set throttle to 0 for startup sequence\n");
+    esc_set_pulse_duration(&esc, 1000);
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
+
+    for (int i = 0; i <= 1000; i += 10)
     {
-        int duty;
-        duty = ms_to_duty(50, 1);
-        ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty));
-        ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0));
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        duty = ms_to_duty(50, 2);
-        ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty));
-        ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0));
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        printf("Gradually ramping throttle, PWM pulse width microseconds: %d\n", 1000 + i);
+        esc_set_pulse_duration(&esc, 1000 + i);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
+    }
+
+    printf("Done throttling up!");
+
+    while (true)
+    {
+        vTaskDelay(500 / portTICK_PERIOD_MS);
     }
 
     /* Print chip information */

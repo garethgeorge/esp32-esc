@@ -1,9 +1,9 @@
 #include "esc.h"
 
-static int ms_to_duty(int freq, int ms)
+static int microsec_to_duty(int freq, int microsec)
 {
-    int duty_cycle_ms = (1000 / freq);
-    return (ms * 8191) / duty_cycle_ms;
+    int duty_cycle_microsec = (1000000 / freq);
+    return (microsec * 8191) / duty_cycle_microsec;
 }
 
 extern void esc_setup(ESC *esc, int timer, int channel, int pin, int freq)
@@ -34,8 +34,8 @@ extern void esc_set_duty(ESC *esc, int duty)
     esc->duty = duty;
 }
 
-extern void esc_set_pulse_duration(ESC *esc, int pulse_duration)
+extern void esc_set_pulse_duration(ESC *esc, int pulse_duration_microsec)
 {
-    int duty = ms_to_duty(esc->timer_config.freq_hz, pulse_duration);
+    int duty = microsec_to_duty(esc->timer_config.freq_hz, pulse_duration_microsec);
     esc_set_duty(esc, duty);
 }

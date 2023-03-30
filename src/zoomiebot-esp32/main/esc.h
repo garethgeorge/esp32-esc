@@ -15,7 +15,7 @@ typedef struct ESC
 
 extern void esc_setup(ESC *esc, int timer, int channel, int pin, int freq);
 extern void esc_set_duty(ESC *esc, int duty);
-extern void esc_set_pulse_duration(ESC *esc, int pulse_duration);
+extern void esc_set_pulse_duration(ESC *esc, int pulse_duration_microsec);
 extern int esc_get_duty(ESC *esc);
 
 #endif
