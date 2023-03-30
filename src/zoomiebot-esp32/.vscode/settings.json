@@ -9,5 +9,6 @@
         "ledc.h": "c",
         "soc.h": "c",
         "periph_ctrl.h": "c"
-    }
+    },
+    "idf.port": "/dev/ttyUSB1"
 }

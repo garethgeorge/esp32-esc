@@ -8,6 +8,8 @@
 #include "driver/gpio.h"
 #include "driver/ledc.h"
 
+#include "esc.h"
+
 // Useful docs
 // - PWM: https://docs.espressif.com/projects/esp8266-rtos-sdk/en/latest/api-reference/peripherals/pwm.html
 // - https://embeddedexplorer.com/esp32-pwm-using-ledc-peripheral/
@@ -20,10 +22,16 @@ ledc_timer_config_t ledc_timer = {
     .speed_mode = LEDC_LOW_SPEED_MODE,
     .timer_num = LEDC_TIMER_0,
     .duty_resolution = LEDC_TIMER_13_BIT,
-    .freq_hz = 1000,
+    .freq_hz = 50,
     .clk_cfg = LEDC_AUTO_CLK};
 
 ledc_channel_config_t ledc_channel[1];
+
+int ms_to_duty(int freq, int ms)
+{
+    int duty_cycle_ms = (1000 / freq);
+    return (ms * 8191) / duty_cycle_ms;
+}
 
 void app_main(void)
 {
@@ -31,7 +39,7 @@ void app_main(void)
 
     ESP_ERROR_CHECK(ledc_timer_config(&ledc_timer));
     ledc_channel[0].channel = LEDC_CHANNEL_0;
-    ledc_channel[0].gpio_num = LED_PIN;
+    ledc_channel[0].gpio_num = GPIO_NUM_27;
     ledc_channel[0].speed_mode = LEDC_LOW_SPEED_MODE;
     ledc_channel[0].timer_sel = LEDC_TIMER_0;
     ledc_channel[0].intr_type = LEDC_INTR_DISABLE;
@@ -39,17 +47,15 @@ void app_main(void)
     ledc_channel[0].hpoint = 0;
     ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel[0]));
 
-    for (;;)
+    for (int i = 0;; i += 1000)
     {
-        uint32_t red_duty = 8191;
-
-        ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, red_duty));
+        int duty;
+        duty = ms_to_duty(50, 1);
+        ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty));
         ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0));
         vTaskDelay(pdMS_TO_TICKS(1000));
-
-        red_duty = 8191 / 2;
-
-        ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, red_duty));
+        duty = ms_to_duty(50, 2);
+        ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty));
         ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0));
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
